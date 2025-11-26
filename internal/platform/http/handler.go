@@ -1,17 +1,28 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/brunooliveiramac/packs-service/internal/pack"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/brunooliveiramac/packs-service/internal/platform/dataprovider/database"
-	"context"
 )
 
 func RegisterRoutes(router *gin.Engine, sizesRepo *database.SizesRepository) {
 	router.Use(gin.Logger())
+	// Allow all origins for simplicity during deployment; tighten later if needed.
+	router.Use(cors.New(cors.Config{
+		AllowAllOrigins:  true,
+		AllowMethods:     []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Content-Type", "Authorization", "X-Requested-With"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: false,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	router.GET("/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
 
