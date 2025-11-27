@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/brunooliveiramac/packs-service/internal/pack"
+	"github.com/brunooliveiramac/packs-service/internal/platform/dataprovider/database"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/brunooliveiramac/packs-service/internal/platform/dataprovider/database"
 )
 
 func RegisterRoutes(router *gin.Engine, sizesRepo *database.SizesRepository) {
@@ -51,8 +51,11 @@ func RegisterRoutes(router *gin.Engine, sizesRepo *database.SizesRepository) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		// convert breakdown to array for stable JSON
-		type item struct{ Size int `json:"size"`; Count int `json:"count"` }
+		// convert breakdown
+		type item struct {
+			Size  int `json:"size"`
+			Count int `json:"count"`
+		}
 		resp := struct {
 			Requested int    `json:"requested"`
 			Shipped   int    `json:"shipped"`
@@ -75,7 +78,7 @@ func RegisterRoutes(router *gin.Engine, sizesRepo *database.SizesRepository) {
 	})
 	router.POST("/api/pack-sizes", func(c *gin.Context) {
 		var req struct {
-			Size   int  `json:"size"`
+			Size   int   `json:"size"`
 			Active *bool `json:"active"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil || req.Size <= 0 {
@@ -83,7 +86,9 @@ func RegisterRoutes(router *gin.Engine, sizesRepo *database.SizesRepository) {
 			return
 		}
 		active := true
-		if req.Active != nil { active = *req.Active }
+		if req.Active != nil {
+			active = *req.Active
+		}
 		if err := sizesRepo.Upsert(c, req.Size, active); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -91,7 +96,9 @@ func RegisterRoutes(router *gin.Engine, sizesRepo *database.SizesRepository) {
 		c.Status(http.StatusCreated)
 	})
 	router.PATCH("/api/pack-sizes/:size", func(c *gin.Context) {
-		var req struct{ Active bool `json:"active"` }
+		var req struct {
+			Active bool `json:"active"`
+		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 			return
@@ -120,5 +127,3 @@ func RegisterRoutes(router *gin.Engine, sizesRepo *database.SizesRepository) {
 		c.Status(http.StatusNoContent)
 	})
 }
-
-

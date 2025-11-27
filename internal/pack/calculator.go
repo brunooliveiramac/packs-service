@@ -23,7 +23,7 @@ func NewCalculator(sizes []int) (*Calculator, error) {
 	return &Calculator{packSizes: s}, nil
 }
 
-type Breakdown map[int]int // packSize -> count
+type Breakdown map[int]int // packSize to count
 
 // Calculate returns the minimal shipped items >= quantity, with fewest packs for that shipped total.
 func (c *Calculator) Calculate(quantity int) (Breakdown, int, error) {
@@ -37,7 +37,9 @@ func (c *Calculator) Calculate(quantity int) (Breakdown, int, error) {
 		prev  int // previous total
 		size  int // last pack size used
 	}
-	dp := map[int]node{0: {packs: 0, prev: -1, size: 0}}
+	dp := map[int]node{
+		0: {packs: 0, prev: -1, size: 0},
+	}
 
 	target := quantity
 	found := -1
@@ -95,5 +97,3 @@ func (c *Calculator) Calculate(quantity int) (Breakdown, int, error) {
 	}
 	return res, found, nil
 }
-
-
