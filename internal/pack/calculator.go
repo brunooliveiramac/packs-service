@@ -19,7 +19,7 @@ func NewCalculator(sizes []int) (*Calculator, error) {
 		return nil, ErrNoPackSizes
 	}
 	s := append([]int(nil), sizes...)
-	sort.Ints(s)
+	sort.Sort(sort.Reverse(sort.IntSlice(s)))
 	return &Calculator{packSizes: s}, nil
 }
 
@@ -30,70 +30,43 @@ func (c *Calculator) Calculate(quantity int) (Breakdown, int, error) {
 	if quantity <= 0 {
 		return nil, 0, ErrInvalidQuantity
 	}
-	maxSize := c.packSizes[len(c.packSizes)-1]
-	// dynamic programming: dp[t] = min packs to make exactly t, and prev for reconstruction
-	type node struct {
-		packs int
-		prev  int // previous total
-		size  int // last pack size used
-	}
-	dp := map[int]node{
-		0: {packs: 0, prev: -1, size: 0},
-	}
 
-	target := quantity
-	found := -1
-	limit := quantity + maxSize // initial search window
+	// packs already sorted DESC in NewCalculator
+	sizesDesc := c.packSizes
+	breakdown := Breakdown{}
+	remaining := quantity
+	total := 0
 
-	for {
-		for t := 1; t <= limit; t++ {
-			if _, ok := dp[t]; ok {
-				continue
-			}
-			bestPacks := int(^uint(0) >> 1) // max int
-			bestPrev := -1
-			bestSize := 0
-			for _, sz := range c.packSizes {
-				if t-sz < 0 {
-					break
-				}
-				if prev, ok := dp[t-sz]; ok {
-					if prev.packs+1 < bestPacks {
-						bestPacks = prev.packs + 1
-						bestPrev = t - sz
-						bestSize = sz
-					}
-				}
-			}
-			if bestPrev != -1 {
-				dp[t] = node{packs: bestPacks, prev: bestPrev, size: bestSize}
-			}
-		}
-		// find minimal achievable total >= target
-		for t := target; t <= limit; t++ {
-			if _, ok := dp[t]; ok {
-				found = t
-				break
-			}
-		}
-		if found != -1 {
-			break
-		}
-		// expand window and continue
-		limit += maxSize
-		// safety bound to avoid infinite loops in pathological inputs
-		if limit > quantity+maxSize*100 {
-			return nil, 0, errors.New("unable to compute pack combination")
+	// GREEDY FILL: take as many big packs as possible ---
+	for _, size := range sizesDesc {
+		if remaining >= size {
+			count := remaining / size
+			breakdown[size] += count
+			remaining -= count * size
+			total += count * size
 		}
 	}
 
-	// reconstruct breakdown from found
-	res := Breakdown{}
-	cur := found
-	for cur > 0 {
-		n := dp[cur]
-		res[n.size]++
-		cur = n.prev
+	// If leftover > 0, add ONE smallest pack ---
+	smallest := sizesDesc[len(sizesDesc)-1]
+	if remaining > 0 {
+		breakdown[smallest]++
+		total += smallest
+		remaining -= smallest
 	}
-	return res, found, nil
+
+	// MERGE STEP: upgrade small packs into bigger ones ---
+	// packSizes is DESC, so merge from smallest to biggest means reverse walk
+	for i := len(sizesDesc) - 1; i > 0; i-- {
+		small := sizesDesc[i]
+		large := sizesDesc[i-1]
+		ratio := large / small
+
+		for breakdown[small] >= ratio {
+			breakdown[small] -= ratio
+			breakdown[large]++
+		}
+	}
+
+	return breakdown, total, nil
 }
